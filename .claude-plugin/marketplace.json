@@ -1,0 +1,14 @@
+{
+  "name": "wpe-headless",
+  "owner": {
+    "name": "WP Engine",
+    "url": "https://github.com/wpengine/headless-deployment-skill"
+  },
+  "plugins": [
+    {
+      "name": "wpe-headless-deploy",
+      "description": "Deploy WP Engine Headless applications via the direct upload API — covers credential setup, app/environment creation, packaging, and zip upload",
+      "source": "."
+    }
+  ]
+}

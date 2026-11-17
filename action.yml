@@ -1,0 +1,23 @@
+name: 'WPE Headless Deploy'
+description: 'Deploy a zip to WP Engine Headless Platform via the direct upload API'
+
+inputs:
+  zip:
+    description: 'Path to the deployment zip file'
+    required: true
+  environment:
+    description: 'Target environment name (e.g. production, staging)'
+    required: false
+    default: 'production'
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v4
+      with:
+        node-version: '20'
+    - run: node "${{ github.action_path }}/skills/wpe-direct/scripts/wpe-direct.js" deploy "$INPUT_ZIP" "$INPUT_ENV"
+      shell: bash
+      env:
+        INPUT_ZIP: ${{ inputs.zip }}
+        INPUT_ENV: ${{ inputs.environment }}

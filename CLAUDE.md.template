@@ -1,0 +1,144 @@
+## Deployment defaults
+
+When working inside a Replit session, Replit Autoscale is the default
+deployment target for this repository. Keep the root `.replit` setting as
+`deploymentTarget = "autoscale"` unless the user explicitly requests another
+target.
+
+Activate this Replit-specific policy only when Replit context is explicit or
+the process environment contains a Replit runtime signal such as `REPL_ID`,
+`REPLIT_DEV_DOMAIN`, or `REPLIT_DOMAINS`. The presence of `.replit` or this
+repository's instructions is not enough because the repository may be cloned
+to a local machine. When running locally or when the environment is
+ambiguous, do not assume Replit deployment or invoke Replit Publish.
+
+For a purely client-side site, an artifact may use Replit Static Deployment
+when its artifact configuration sets `serve = "static"`. This is an
+app-specific optimization, not the repository-wide default.
+
+Do not assume WP Engine is the deployment destination. Use the WP Engine
+instructions below only when the user explicitly requests WP Engine Headless,
+Atlas, or an external deployment.
+
+## WP Engine deployment skills
+
+This project has WP Engine Headless deployment skills in `.claude/skills/`.
+**Before doing any WP Engine deployment task**, read:
+- `.claude/skills/wpe-direct/SKILL.md` — authenticate, create environments, deploy zips
+- `.claude/skills/wpe-package/SKILL.md` — package a static/SPA build into a deployable zip
+- `.claude/skills/wpe-next/SKILL.md` — package and deploy Next.js apps (SSR, App Router, API routes all supported)
+
+### WP Engine application-creation contract — MANDATORY
+
+Run this contract **before every one of** `create-app`, `create-env`,
+packaging, `deploy`, and any redeploy. It applies to both new apps and
+existing apps. Do not infer compatibility from a previous successful build,
+from a green local smoke test, or from binaries discovered inside a
+development container.
+
+When the user selects WP Engine Headless / Atlas before an application
+exists, design and scaffold for Atlas from the beginning. Do not build an app
+for a different hosting contract and try to retrofit it at deployment time.
+
+Atlas accepts Node.js-based front ends using:
+
+- **Rendering modes:** SSR, SSG, and ISR
+- **Frameworks:** Faust.js; Next.js, Remix, and Gatsby; Nuxt; Astro,
+  SvelteKit, SolidStart, and QwikCity
+- **Custom frameworks:** any framework with a standard Node.js adapter, or
+  one that compiles to static output served by `http-server`, Express, or an
+  equivalent production server
+
+### Runtime allowlist — hard rules
+
+Application code must execute **entirely** in Node.js or compile to static
+browser assets. Before packaging, search production code and scripts for
+subprocess execution through `child_process`, `exec`, `execFile`, `spawn`,
+shell scripts, or equivalent APIs.
+
+**Reject the deployment** when these calls require an external runtime or
+executable not explicitly on the allowlist. Examples that must be rejected:
+`perl`, `python`, `ruby`, `php`, `java`, `go`, locally installed CLIs
+(`ffmpeg`, `imagemagick`, etc.), arbitrary system binaries, OS-package
+dependencies, writable local persistence (SQLite files, on-disk state), and
+Replit-/Vercel-/Netlify-specific runtime services.
+
+**The presence of an executable during local testing does not establish
+platform support.** Dev environments ship binaries WP Engine does not
+officially support. A local smoke test proves the local environment works —
+it does not prove WP Engine will.
+
+### Pre-flight checklist
+
+Before creating any WP Engine resource, confirm the project has:
+
+1. A supported framework and rendering mode.
+2. A reproducible production build command.
+3. A production start command when using SSR/ISR.
+4. A server that binds to `0.0.0.0` and reads the assigned `PORT`.
+5. No reliance on host-specific runtime behavior, local filesystem state, or
+   development servers.
+6. **No subprocess calls to unsupported runtimes** (see allowlist above).
+7. A deployment package matching the selected path:
+   - Next.js source package: use `wpe-next`.
+   - Static/SPA output: use `wpe-package`.
+   - Other SSR/ISR frameworks: custom Node-compatible package with a valid
+     `server` command and `.wpengine.yaml`.
+8. Local production build + start smoke test pass **and** the runtime
+   allowlist check passes.
+
+### When the contract fails
+
+If any check fails, **stop immediately**. Do not call `create-app`,
+`create-env`, package, or upload. Explain the exact incompatibility and offer
+compatible alternatives:
+
+- Rewrite the offending runtime in Node.js.
+- Deploy the unsupported backend to a compatible external service and call
+  it over HTTPS from the Node.js app.
+- Choose another hosting platform.
+
+Do not create or update WP Engine resources while waiting for the user's
+decision. The WP Engine app record is separate from the framework project —
+creating the app does not make an incompatible project deployable.
+
+### Packaging hygiene — production dependency closure
+
+Build the deployment from an **allowlist**, not by copying the repository or
+workspace root:
+
+- Static/SPA: only compiled frontend output, minimal `server.js`, minimal
+  `package.json`, lockfile if required, `.wpengine.yaml`.
+- Source deployments: only source files, config, assets, and workspace
+  packages actually imported by production entry points.
+
+Exclude unrelated `lib/` packages, database libraries, generated API clients,
+schema packages, test utilities, mockup artifacts, scripts, examples, and
+generated files not part of the production dependency graph.
+
+When scaffolding a new WP Engine-targeted app, prefer a single deployable
+application package. Do not add workspace libraries (`lib/db`, generated API
+clients, shared utilities) unless the application actually imports them.
+Before delivery, run an unused-file and dependency review and remove anything
+not reachable from the production entry points.
+
+### Rules (follow in order — do not skip when WP Engine is explicitly requested)
+
+1. **Set up credentials before anything else.** Check the project root for a `.env` file with `WPE_USER_ID`, `WPE_API_SECRET`, `WPE_ACCOUNT`, and `WPE_APP_ID`. If any are missing, collect them conversationally and write the file — do not ask the user to edit it manually. See the Credentials section in `wpe-direct/SKILL.md`.
+
+2. **Check for app code before running API calls.** Look for `package.json`, `build/`, `dist/`, or `src/` in the project root.
+   - If none exist: ask — "What do you want to deploy? Options: (a) static site or SPA (HTML/React/Vite/Vue/Svelte) — use wpe-package, (b) Next.js app — use wpe-next, (c) I already have a zip."
+   - If the user says Next.js but there is no project yet: check `.env` for `WPE_APP_ID` and use it as the app name — do not ask the user if it is already set. Then scaffold with `npx create-next-app@latest` (see `wpe-next` SKILL.md step 0) and continue.
+   - If the user says Next.js and a project exists: use the `wpe-next` skill. Do **not** add `output: 'standalone'`.
+   - **Next.js is fully supported** — SSR, server components, API routes all work. Never tell the user Next.js is unsupported.
+   - If the user selects Nuxt, Remix, Gatsby, Astro, SvelteKit, SolidStart,
+     QwikCity, Faust.js, or another SSR/ISR framework: confirm its Node.js
+     adapter, build/start commands, host/port behavior, and package it using
+     a framework-specific or custom Node-compatible deployment path. Do not
+     route SSR/ISR output through the static SPA packager.
+   - If the user has not selected a framework, ask them to choose a supported
+     framework and rendering mode before creating the WP Engine app record.
+
+3. **Run deployment as a single guided operation.** Do not present the individual steps (status, create-app, create-env, deploy) as a manual sequence for the user to execute. Handle each step internally and only prompt the user when a genuine decision is needed — such as choosing a WordPress install when multiple options exist.
+
+4. **Translate errors into plain language.** If a script fails, read `wpe-direct/references/troubleshooting.md` and relay the explanation in plain terms. Never surface raw shell output, HTTP status codes, or stack traces to the user.

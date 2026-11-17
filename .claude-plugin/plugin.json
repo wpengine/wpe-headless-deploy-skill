@@ -1,0 +1,15 @@
+{
+  "name": "wpe-headless-deploy",
+  "version": "1.0.0",
+  "description": "Deploy WP Engine Headless applications via the direct upload API — covers credential setup, app/environment creation, packaging, and zip upload",
+  "author": {
+    "name": "WP Engine",
+    "email": "support@wpengine.com"
+  },
+  "skills": [
+    "./skills/wpe-direct",
+    "./skills/wpe-package",
+    "./skills/wpe-next",
+    "./skills/replit-default-deployment"
+  ]
+}
