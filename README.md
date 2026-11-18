@@ -141,7 +141,7 @@ wpe-direct help
 ### From GitHub Actions
 
 ```yaml
-- uses: wpengine/headless-deployment-skill@<sha>
+- uses: wpengine/wpe-headless-deploy-skill@<sha>
   with:
     zip: app.zip
     environment: production

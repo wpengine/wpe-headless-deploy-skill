@@ -2,7 +2,7 @@
   "name": "wpe-headless",
   "owner": {
     "name": "WP Engine",
-    "url": "https://github.com/wpengine/headless-deployment-skill"
+    "url": "https://github.com/wpengine/wpe-headless-deploy-skill"
   },
   "plugins": [
     {
